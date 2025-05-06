@@ -1,103 +1,223 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useEffect } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { Stock, SectorSummary } from '../../interfaces';
+import { mockStocks, sectorColors } from '../../utils/mockData';
+import { formatCurrency } from '../../utils/formatters';
+import Header from '../../components/Header';
+import Loader from '../../components/Loader';
+import ErrorBanner from '../../components/ErrorBanner';
+import SectorGroup from '../../components/SectorGroup';
+import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+
+export default function PortfolioDashboard() {
+  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sectorSummaries, setSectorSummaries] = useState<SectorSummary[]>([]);
+  const [showCharts, setShowCharts] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Simulate API call
+    const fetchStocks = async () => {
+      try {
+        setLoading(true);
+        // In a real app, this would be an API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setStocks(mockStocks);
+        setLoading(false);
+      } catch (error) {
+        setError('Failed to fetch portfolio data. Please try again.');
+        setLoading(false);
+      }
+    };
+
+    fetchStocks();
+  }, []);
+
+  useEffect(() => {
+    if (stocks.length > 0) {
+      // Calculate sector summaries
+      const sectors = [...new Set(stocks.map(stock => stock.sector))];
+      
+      const summaries = sectors.map(sector => {
+        const sectorStocks = stocks.filter(stock => stock.sector === sector);
+        const totalInvestment = sectorStocks.reduce((sum, stock) => sum + (stock.purchasePrice * stock.quantity), 0);
+        const currentValue = sectorStocks.reduce((sum, stock) => sum + (stock.currentPrice * stock.quantity), 0);
+        const gainLoss = currentValue - totalInvestment;
+        const gainLossPercentage = (gainLoss / totalInvestment) * 100;
+        
+        return {
+          sector,
+          totalInvestment,
+          currentValue,
+          gainLoss,
+          gainLossPercentage
+        };
+      });
+      
+      setSectorSummaries(summaries);
+    }
+  }, [stocks]);
+
+  const handleRefresh = () => {
+    setLoading(true);
+    // Simulate refresh
+    setTimeout(() => {
+      // Apply some random changes to stock prices
+      const updatedStocks = stocks.map(stock => ({
+        ...stock,
+        currentPrice: stock.currentPrice * (0.95 + Math.random() * 0.1)
+      }));
+      setStocks(updatedStocks);
+      setLoading(false);
+    }, 1000);
+  };
+
+  // Get all unique sectors
+  const sectors = [...new Set(stocks.map(stock => stock.sector))];
+
+  // Calculate overall portfolio value
+  const totalInvestment = stocks.reduce((sum, stock) => sum + (stock.purchasePrice * stock.quantity), 0);
+  const currentValue = stocks.reduce((sum, stock) => sum + (stock.currentPrice * stock.quantity), 0);
+  const overallGainLoss = currentValue - totalInvestment;
+  const overallGainLossPercentage = (overallGainLoss / totalInvestment) * 100;
+
+  // Prepare data for pie chart
+  const pieChartData = sectorSummaries.map(summary => ({
+    name: summary.sector,
+    value: summary.currentValue
+  }));
+
+  if (loading && stocks.length === 0) {
+    return <Loader />;
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header / Navbar */}
+      <Header 
+        onRefresh={handleRefresh} 
+        onToggleCharts={() => setShowCharts(!showCharts)}
+        showCharts={showCharts}
+        loading={loading}
+      />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Error Banner */}
+      {error && <ErrorBanner message={error} />}
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Overall Portfolio Summary */}
+        <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Overall Portfolio Summary</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-gray-50 p-4 rounded-md">
+              <p className="text-sm text-gray-500">Total Investment</p>
+              <p className="text-xl font-bold">{formatCurrency(totalInvestment)}</p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-md">
+              <p className="text-sm text-gray-500">Current Value</p>
+              <p className="text-xl font-bold">{formatCurrency(currentValue)}</p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-md">
+              <p className="text-sm text-gray-500">Gain/Loss</p>
+              <div className="flex items-center">
+                {overallGainLoss > 0 ? (
+                  <ArrowUpCircle className="h-5 w-5 text-green-500 mr-1" />
+                ) : (
+                  <ArrowDownCircle className="h-5 w-5 text-red-500 mr-1" />
+                )}
+                <p className={`text-xl font-bold ${overallGainLoss > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {formatCurrency(Math.abs(overallGainLoss))}
+                </p>
+              </div>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-md">
+              <p className="text-sm text-gray-500">Gain/Loss %</p>
+              <div className="flex items-center">
+                {overallGainLossPercentage > 0 ? (
+                  <ArrowUpCircle className="h-5 w-5 text-green-500 mr-1" />
+                ) : (
+                  <ArrowDownCircle className="h-5 w-5 text-red-500 mr-1" />
+                )}
+                <p className={`text-xl font-bold ${overallGainLossPercentage > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {overallGainLossPercentage.toFixed(2)}%
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Charts Section */}
+        {showCharts && (
+          <div className="bg-white shadow rounded-lg p-6 mb-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Portfolio Visualization</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Sector Distribution Pie Chart */}
+              <div className="h-64">
+                <h3 className="text-md font-medium text-gray-700 mb-2">Sector Distribution</h3>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieChartData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {pieChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={sectorColors[entry.name as keyof typeof sectorColors] || '#8884d8'} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              
+              {/* Gain/Loss by Sector Bar Chart */}
+              <div className="h-64">
+                <h3 className="text-md font-medium text-gray-700 mb-2">Gain/Loss by Sector</h3>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart 
+                    data={sectorSummaries}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="sector" />
+                    <YAxis tickFormatter={(value) => `$${value}`} />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                    <Legend />
+                    <Line type="monotone" dataKey="currentValue" name="Current Value" stroke="#3b82f6" strokeWidth={2} />
+                    <Line type="monotone" dataKey="totalInvestment" name="Investment" stroke="#6b7280" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sector Groups */}
+        {sectors.map(sector => {
+          const sectorStocks = stocks.filter(stock => stock.sector === sector);
+          const sectorSummary = sectorSummaries.find(summary => summary.sector === sector);
+          
+          if (!sectorSummary) return null;
+          
+          return (
+            <SectorGroup 
+              key={sector}
+              sector={sector}
+              stocks={sectorStocks}
+              summary={sectorSummary}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
