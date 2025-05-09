@@ -1,22 +1,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Keep your custom CSS below Tailwind directives */
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+@tailwind screens;
+@tailwind typography;
+@tailwind forms;
+@tailwind aspect-ratio;
+@tailwind line-clamp;
+@tailwind scrollbar;
+@tailwind dark;
+@tailwind dark-scrollbar;
+@tailwind dark-scrollbar-thin;
